@@ -52,7 +52,7 @@
         <h3>Filter by Essential Services:</h3>
         <div class="toggle-row">
             <input type="checkbox" id="toggle-highschool" class="amenity-toggle" value="highschool">
-            <label for="toggle-highschool">High School (Within 15 mins)</label>
+            <label for="toggle-highschool">High School</label>
         </div>
         <div class="toggle-row">
             <input type="checkbox" id="toggle-hospital" class="amenity-toggle" value="hospital">
@@ -87,15 +87,23 @@
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Sleek dark basemap
-        center: [145.05, -37.75], // Centered between Darebin and Banyule
+        center: [145.05, -37.75], // Centered on Melbourne's outer north
         zoom: 11
     });
 
+    // Error catcher: Will pop up an alert if the GeoJSON fails to load
+    map.on('error', function(e) {
+        if (e && e.error && e.error.message) {
+            console.error(e.error.message);
+            alert("Map Error: " + e.error.message + "\n\nDouble-check that your GeoJSON file is fully uploaded and not corrupted.");
+        }
+    });
+
     map.on('load', () => {
-        // Load your local GeoJSON file
+        // Load the local GeoJSON file exactly as spelled in your repository
         map.addSource('suburbs', {
             type: 'geojson',
-            data: 'Totalscore2.geojson' // MUST match your file name exactly
+            data: 'Totalscore2.geojson'
         });
 
         // Add the polygon layer
@@ -107,8 +115,8 @@
                 // Color the polygons based on the total_score column
                 'fill-color': [
                     'step',
-                    ['get', 'total_score'],
-                    '#edf8fb', // Default (0)
+                    ['to-number', ['get', 'total_score']], // Forces the map to read it as a number
+                    '#edf8fb', 
                     1, '#b2e2e2',
                     3, '#66c2a4',
                     5, '#2ca25f',
@@ -118,7 +126,7 @@
             }
         });
 
-        // Add Hover Popup (Map Tips)
+        // Add Hover Popup
         const popup = new maplibregl.Popup({
             closeButton: false,
             closeOnClick: false
@@ -131,12 +139,12 @@
             // Build the HTML for the hover popup
             const popupHTML = `
                 <div style="font-size: 14px;">
-                    <strong style="color: #00ffcc; font-size: 16px;">Total Score: ${props.total_score}</strong><br><hr style="border-color:#333;">
-                    🎓 Uni: ${props.uni}<br>
-                    💊 Pharmacy: ${props.pharmacy}<br>
-                    🚆 Train: ${props.train}<br>
-                    🏥 Hospital: ${props.hospital}<br>
-                    🏫 High School: ${props.highschool}
+                    <strong style="color: #00ffcc; font-size: 16px;">Total Score: ${props.total_score || 0}</strong><br><hr style="border-color:#333;">
+                    🎓 Uni: ${props.uni || 0}<br>
+                    💊 Pharmacy: ${props.pharmacy || 0}<br>
+                    🚆 Train: ${props.train || 0}<br>
+                    🏥 Hospital: ${props.hospital || 0}<br>
+                    🏫 High School: ${props.highschool || 0}
                 </div>
             `;
             
@@ -160,8 +168,8 @@
             
             toggles.forEach(toggle => {
                 if (toggle.checked) {
-                    // This tells the map: "Only show properties where this column equals 1"
-                    activeFilters.push(['==', ['get', toggle.value], 1]);
+                    // Forces the map to read the column as a number to check if it equals 1
+                    activeFilters.push(['==', ['to-number', ['get', toggle.value]], 1]);
                 }
             });
 
